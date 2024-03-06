@@ -124,6 +124,28 @@ func MsHalI2CTransfer(handle C.uintptr_t, addr C.int, wrData unsafe.Pointer, wrL
 	return 0
 }
 
+//export MsHalMemAccess
+func MsHalMemAccess(handle C.uintptr_t, write C.int, addr C.int, data unsafe.Pointer, length C.int) C.int {
+	h := cgo.Handle(handle)
+	ctx := h.Value().(*Context)
+	region := ctx.hal.MemoryRegionGet(mshal.MemoryRegionRAM)
+	buf := C.GoBytes(data, length)
+	_, err := region.Access(write == 1, int(addr), buf)
+	if err != nil {
+		return 1
+	}
+	if(write == 0) {
+		udata := uintptr(data)
+		for i := 0; i < int(length); i++ {
+			datac := (*C.char)(unsafe.Pointer(udata))
+			*datac = C.char(buf[i])
+			udata++
+		}
+	}
+	
+	return 0
+}
+
 func main() {
 	// We need the main function to make possible
 	// CGO compiler to compile the package as C shared library
