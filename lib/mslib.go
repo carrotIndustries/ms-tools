@@ -13,49 +13,13 @@ import "runtime/cgo"
 
 import (
 	"fmt"
-	"os"
 	
-	"errors"
 	"unsafe"
 
 	"github.com/BertoldVdb/ms-tools/gohid"
 	"github.com/BertoldVdb/ms-tools/mshal"
 	"github.com/sstallion/go-hid"
 )
-
-func SearchDevice(foundHandler func(info *hid.DeviceInfo) error) error {
-	for _, vid := range []uint16{uint16(0x534d), uint16(0x345f)} {
-		if err := hid.Enumerate(vid, uint16(0), func(info *hid.DeviceInfo) error {
-			return foundHandler(info)
-		}); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func OpenDevice(name string) (gohid.HIDDevice, error) {
-	var dev *hid.Device
-	err := SearchDevice(func(info *hid.DeviceInfo) error {
-		if info.ProductStr == name {
-			d, err := hid.Open(info.VendorID, info.ProductID, info.SerialNbr)
-			if err == nil {
-				dev = d
-				return errors.New("Done")
-			}
-			return err
-		}
-		return nil
-	})
-	if dev != nil {
-		return dev, nil
-	}
-	if err == nil {
-		err = os.ErrNotExist
-	}
-
-	return nil, err
-}
 
 type Context struct {
 	dev gohid.HIDDevice
@@ -64,9 +28,9 @@ type Context struct {
 }
 
 //export MsHalOpen
-func MsHalOpen(name *C.char) C.uintptr_t {
+func MsHalOpen(path *C.char) C.uintptr_t {
 	c := &Context{}
-	dev, err := OpenDevice(C.GoString(name))
+	dev, err := hid.OpenPath(C.GoString(path))
 	if err != nil {
 		fmt.Println("Failed to open device", err)
 		return 0
