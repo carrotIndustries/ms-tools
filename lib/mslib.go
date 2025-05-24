@@ -89,10 +89,18 @@ func MsHalI2CTransfer(handle C.uintptr_t, addr C.int, wrData unsafe.Pointer, wrL
 }
 
 //export MsHalMemAccess
-func MsHalMemAccess(handle C.uintptr_t, write C.int, addr C.int, data unsafe.Pointer, length C.int) C.int {
+func MsHalMemAccess(handle C.uintptr_t, write C.int, cregion C.int, addr C.int, data unsafe.Pointer, length C.int) C.int {
 	h := cgo.Handle(handle)
 	ctx := h.Value().(*Context)
-	region := ctx.hal.MemoryRegionGet(mshal.MemoryRegionRAM)
+	var region mshal.MemoryRegion
+	if (cregion == 0) {
+		region = ctx.hal.MemoryRegionGet(mshal.MemoryRegionRAM)
+	} else if (cregion == 1) {
+		region = ctx.hal.MemoryRegionGet(mshal.MemoryRegionEEPROM)
+	} else {
+		return 1
+	}
+
 	buf := C.GoBytes(data, length)
 	_, err := region.Access(write == 1, int(addr), buf)
 	if err != nil {
